@@ -63,6 +63,23 @@ def write_changelog(entries):
         f.write(head + "\n".join(entries) + "\n")
 
 
+DRIVE_HELPER = r'''
+
+def drive_path(folder="ThermalMatrixModel"):
+    """Folder in the student's Google Drive (mounted on first use); a local folder outside Colab."""
+    if IN_COLAB:
+        if not os.path.isdir("/content/drive/MyDrive"):
+            from google.colab import drive
+            drive.mount("/content/drive")
+        path = os.path.join("/content/drive/MyDrive", folder.strip("/ ") or "ThermalMatrixModel")
+    else:
+        path = folder.strip("/ ") or "ThermalMatrixModel"
+        print(f"(not in Colab: using the local folder '{path}' instead of Google Drive)")
+    os.makedirs(path, exist_ok=True)
+    return path
+'''
+
+
 def build(note="", vent=False):
     version = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     entries = changelog_entries(version, note, vent)
@@ -127,6 +144,7 @@ without touching code. *Runtime ▸ Run all* runs the Trombe-wall example end to
         + "    IN_COLAB = True\n"
         + "except ImportError:\n"
         + "    IN_COLAB = False\n"
+        + DRIVE_HELPER
         + "print(f'✓ Thermal matrix engine loaded - model version {MODEL_VERSION}' + ('' if IN_COLAB else ' (not running in Colab: uploads and the drawing sync are disabled)'))\n"
     ))
 
@@ -246,9 +264,12 @@ softwood, hardwood, CLT, mineral wool, EPS, XPS, straw bale, steel, soil (moist)
 
     cells.append(code(r'''
 #@title 2a ▸ Start a network { display-mode: "form" }
-#@markdown ⚠️ Re-running this cell **replaces** the current network (save yours first with step 5).
-start_with = "Trombe wall (spreadsheet example, IP)" #@param ["Trombe wall (spreadsheet example, IP)", "Simple room with slab (SI, uses formulas)", "Blank network (IP)", "Blank network (SI)", "Upload a saved network (.json)"]
+#@markdown ⚠️ Re-running this cell **replaces** the current network (save yours first with step 5, to Google Drive or your computer).
+start_with = "Trombe wall (spreadsheet example, IP)" #@param ["Trombe wall (spreadsheet example, IP)", "Simple room with slab (SI, uses formulas)", "Blank network (IP)", "Blank network (SI)", "Open a saved network from my Google Drive", "Upload a saved network (.json)"]
 title = "" #@param {type:"string"}
+#@markdown For *Google Drive*: the folder in your Drive (as in step 5) and the file name; leave the name blank to list the files there.
+drive_folder = "ThermalMatrixModel" #@param {type:"string"}
+drive_file = "my_network.json" #@param {type:"string"}
 
 if start_with.startswith("Trombe"):
     net = example_trombe_wall()
@@ -257,6 +278,15 @@ elif start_with.startswith("Simple"):
 elif start_with.startswith("Blank"):
     net = Network("IP" if "(IP)" in start_with else "SI")
     net.add_boundary("Outdoor", "T_out", x=80, y=200)
+elif "Google Drive" in start_with:
+    folder = drive_path(drive_folder)
+    saved = sorted(f for f in os.listdir(folder) if f.endswith(".json"))
+    if not drive_file or drive_file not in saved:
+        raise FileNotFoundError(f"'{drive_file}' is not in {folder}. Networks there: {', '.join(saved) or 'none yet'}")
+    net = Network.from_json(os.path.join(folder, drive_file))
+    print("opened", os.path.join(folder, drive_file))
+    if net.saved_with and net.saved_with != MODEL_VERSION:
+        print(f"note: this network was saved with model version {net.saved_with}; you are running {MODEL_VERSION}")
 else:
     if not IN_COLAB:
         raise RuntimeError("Uploading needs Colab. Locally use: net = Network.from_json('file.json')")
@@ -402,14 +432,22 @@ display(results.T.round(2))
     cells.append(md("## 5 ▸ Save your work"))
 
     cells.append(code(r'''
-#@title 5 ▸ Download results (.csv) and your network (.json) { display-mode: "form" }
+#@title 5 ▸ Save your network (.json), results (.csv) and diagram (.png) { display-mode: "form" }
+#@markdown **Google Drive** keeps your work between sessions: files go to *My Drive ▸ drive_folder*
+#@markdown (Colab asks once for permission). Open a saved network again in step 2a.
 file_stem = "my_network" #@param {type:"string"}
-results.to_csv(file_stem + "_results.csv")
-net.to_json(file_stem + ".json")
-fig = plt.figure(figsize=(12, 6)); plot_network(net, ax=fig.gca()); fig.text(0.99, 0.01, f"model version {MODEL_VERSION}", ha="right", fontsize=7, color="gray"); fig.savefig(file_stem + "_network.png", dpi=150, bbox_inches="tight"); plt.close(fig)
-print("saved", file_stem + "_results.csv,", file_stem + ".json,", file_stem + "_network.png")
-if IN_COLAB:
-    for f in (file_stem + "_results.csv", file_stem + ".json", file_stem + "_network.png"):
+save_to = "Google Drive" #@param ["Google Drive", "Download to this computer", "Both"]
+drive_folder = "ThermalMatrixModel" #@param {type:"string"}
+
+folder = drive_path(drive_folder) if save_to != "Download to this computer" else "."
+base = os.path.join(folder, file_stem)
+outs = [base + ".json", base + "_results.csv", base + "_network.png"]
+net.to_json(outs[0])
+results.to_csv(outs[1])
+fig = plt.figure(figsize=(12, 6)); plot_network(net, ax=fig.gca()); fig.text(0.99, 0.01, f"model version {MODEL_VERSION}", ha="right", fontsize=7, color="gray"); fig.savefig(outs[2], dpi=150, bbox_inches="tight"); plt.close(fig)
+print("saved:\n  " + "\n  ".join(outs))
+if IN_COLAB and save_to != "Google Drive":
+    for f in outs:
         _colab_files.download(f)
 '''))
 

@@ -9,8 +9,10 @@ Python version of the spreadsheet `MatrixModel_TrombeWall_25.xlsx` (method from
 | **Thermal Matrix Model** (standard) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/upenn/7520_MatrixModel/blob/main/ThermalMatrixModel.ipynb) |
 | **Thermal Matrix Model + controlled ventilation** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/upenn/7520_MatrixModel/blob/main/ThermalMatrixModel_Vent.ipynb) |
 
-The links always open the latest version on GitHub. Colab opens a copy: to keep your changes,
-use *File ▸ Save a copy in Drive*, and download your network (`.json`) in step 5.
+The links always open the latest version on GitHub. Step 5 saves your network (`.json`), results
+(`.csv`) and diagram (`.png`) to *My Drive ▸ ThermalMatrixModel* in your Google Drive (or downloads
+them); step 2a opens a saved network again. To keep edits to the notebook itself, use
+*File ▸ Save a copy in Drive*.
 
 ## Files
 

@@ -3,6 +3,8 @@
 Newest first. Add a note with `python build_notebook.py "what changed"`.
 Entries marked [ventilation notebook] are builds of ThermalMatrixModel_Vent.ipynb (`python build_notebook.py --vent "what changed"`); both notebooks share the engine.
 
+- **2026-11-24 18:11** - [ventilation notebook] Save networks, results and diagrams to Google Drive (default) or download them; open a saved network from Google Drive in step 2a
+- **2026-11-24 18:11** - Save networks, results and diagrams to Google Drive (default) or download them; open a saved network from Google Drive in step 2a
 - **2026-11-23 16:47** - [ventilation notebook] Indoor-outdoor difference test: a controlled link opens only when the sensor is warmer than outdoors by warmer_by (default 2 C / 3.6 F), so windows stay shut when it is hotter outside
 - **2026-11-23 16:43** - [ventilation notebook] First version: links can switch between a closed and an open UA (temperature-responsive windows), opening when a sensor node and the outdoor air are above set points, with a dead band; defaults to 4 steps per hour
 - **2026-11-21 15:31** - Solar gain per node is now a formula with one term per window, e.g. aperture(6, 0.75, 0.9)*I_S + aperture(3, 0.75, 0.9)*I_E; older networks convert automatically
