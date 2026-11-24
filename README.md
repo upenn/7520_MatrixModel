@@ -3,6 +3,17 @@
 Python version of the spreadsheet `MatrixModel_TrombeWall_25.xlsx` (method from
 `TrombeWall_1979.pdf`), with a Colab notebook for students.
 
+## Open in Colab
+| notebook | |
+|---|---|
+| **Thermal Matrix Model** (standard) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/upenn/7520_MatrixModel/blob/main/ThermalMatrixModel.ipynb) |
+| **Thermal Matrix Model + controlled ventilation** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/upenn/7520_MatrixModel/blob/main/ThermalMatrixModel_Vent.ipynb) |
+
+The links always open the latest version on GitHub. Colab opens a copy: to keep your changes,
+use *File ▸ Save a copy in Drive*, and download your network (`.json`) in step 5.
+
+## Files
+
 | file | what it is |
 |---|---|
 | `ThermalMatrixModel.ipynb` | **The notebook to give students.** Self-contained: upload it to Colab (File ▸ Upload notebook) or put it on Drive / GitHub. |
