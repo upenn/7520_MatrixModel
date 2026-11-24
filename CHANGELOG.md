@@ -2,7 +2,11 @@
 
 Newest first. Add a note with `python build_notebook.py "what changed"`.
 Entries marked [ventilation notebook] are builds of ThermalMatrixModel_Vent.ipynb (`python build_notebook.py --vent "what changed"`); both notebooks share the engine.
+Entries marked [property calculator] are builds of PropertyCalculator.ipynb (`python build_notebook.py --calc "what changed"`).
 
+- **2026-11-24 18:53** - [property calculator] First version: materials table (generic values plus your own CSV or Google Sheet in the layout of ASHRAE Fundamentals ch. 26 Table 1), layer values with suggested segments and paste-ready formulas, and assembly U-values
+- **2026-11-24 18:52** - [ventilation notebook] Property calculator moved to its own notebook (PropertyCalculator.ipynb); link to it in step 2
+- **2026-11-24 18:52** - Property calculator moved to its own notebook (PropertyCalculator.ipynb); link to it in step 2
 - **2026-11-24 18:11** - [ventilation notebook] Save networks, results and diagrams to Google Drive (default) or download them; open a saved network from Google Drive in step 2a
 - **2026-11-24 18:11** - Save networks, results and diagrams to Google Drive (default) or download them; open a saved network from Google Drive in step 2a
 - **2026-11-23 16:47** - [ventilation notebook] Indoor-outdoor difference test: a controlled link opens only when the sensor is warmer than outdoors by warmer_by (default 2 C / 3.6 F), so windows stay shut when it is hotter outside

@@ -45,12 +45,13 @@ def code(src, form=True):
 CHANGELOG = os.path.join(HERE, "CHANGELOG.md")
 
 
-def changelog_entries(version, note, vent=False):
+def changelog_entries(version, note, vent=False, tag=None):
     """Existing CHANGELOG.md entries with this build's entry first."""
     entries = []
     if os.path.exists(CHANGELOG):
         entries = [ln for ln in open(CHANGELOG, encoding="utf-8").read().splitlines() if ln.startswith("- ")]
-    tag = "[ventilation notebook] " if vent else ""
+    if tag is None:
+        tag = "[ventilation notebook] " if vent else ""
     return [f"- **{version}** - {tag}{note or '(rebuilt, no note)'}"] + entries
 
 
@@ -58,7 +59,9 @@ def write_changelog(entries):
     head = ("# Thermal Matrix Model: version history\n\n"
             "Newest first. Add a note with `python build_notebook.py \"what changed\"`.\n"
             "Entries marked [ventilation notebook] are builds of ThermalMatrixModel_Vent.ipynb "
-            "(`python build_notebook.py --vent \"what changed\"`); both notebooks share the engine.\n\n")
+            "(`python build_notebook.py --vent \"what changed\"`); both notebooks share the engine.\n"
+            "Entries marked [property calculator] are builds of PropertyCalculator.ipynb "
+            "(`python build_notebook.py --calc \"what changed\"`).\n\n")
     with open(CHANGELOG, "w", encoding="utf-8") as f:
         f.write(head + "\n".join(entries) + "\n")
 
@@ -260,6 +263,12 @@ surfaces. Solar absorptance belongs only in the solar gain.
 Materials: `concrete, brick, adobe, rammed earth, stone, water, glass, gypsum board, plaster,
 softwood, hardwood, CLT, mineral wool, EPS, XPS, straw bale, steel, soil (moist), air`
 (typical values — replace with product data when you have it).
+
+**Property Calculator.** To look up materials (generic values, or your own table of ASHRAE
+*Fundamentals* Table 1 values or product data) and work out each layer's conductance and
+capacitance, split into segments for thick mass walls, use the companion notebook
+[Property Calculator](https://colab.research.google.com/github/upenn/7520_MatrixModel/blob/main/PropertyCalculator.ipynb).
+It prints formulas you can paste into the editor, e.g. `conduction(A=48, L=0.08, k=1.75)`.
 """))
 
     cells.append(code(r'''
@@ -318,41 +327,6 @@ if show_matrix and not net.check(weather):
     display(Markdown(f"**UA matrix** (node–node conductances, conductances to each boundary, and C) "
                      f"— the spreadsheet's *Parameters* sheet, in {UNIT_LABELS[net.units]['UA']}:"))
     display(net.ua_table().round(2))
-'''))
-
-    cells.append(md(r"""
-### Property calculator
-Use this to work out values before typing them into the network. To model a thick mass wall,
-split it into several capacitive nodes yourself (like the spreadsheet's *Wall Seg. 1–5*); the
-per-segment rows below give the values for each one.
-"""))
-
-    cells.append(code(r'''
-#@title Property calculator { display-mode: "form" }
-#@markdown Uses the current network's units (geometry in ft for IP, m for SI).
-#@markdown `area` = face area the heat passes through; `thickness` = layer thickness (L) in the direction of heat flow;
-#@markdown `emissivity_1/2` = infrared emissivities of two facing surfaces (not solar absorptance).
-material = "concrete" #@param ["concrete", "brick", "adobe", "rammed earth", "stone", "water", "glass", "gypsum board", "plaster", "softwood", "hardwood", "CLT", "mineral wool", "EPS", "XPS", "straw bale", "steel", "soil (moist)", "air"]
-area = 516 #@param {type:"number"}
-thickness = 2.0 #@param {type:"number"}
-n_segments = 5 #@param {type:"integer"}
-emissivity_1 = 0.9 #@param {type:"number"}
-emissivity_2 = 0.84 #@param {type:"number"}
-
-p, lab = net.props, UNIT_LABELS[net.units]
-seg = thickness / n_segments
-rows = [
-    ("whole layer: conduction k·A/L", p.conduction(area, thickness, material=material), lab["UA"]),
-    ("whole layer: capacitance ρ·c·A·L", p.mass(area, thickness, material), lab["C"]),
-    (f"per segment (L/{n_segments}): conduction", p.conduction(area, seg, material=material), lab["UA"]),
-    (f"per segment: capacitance", p.mass(area, seg, material), lab["C"]),
-    ("surface → first segment centre (L/2n)", p.conduction(area, seg / 2, material=material), lab["UA"]),
-    (f"radiation between two surfaces (ε={emissivity_1}, {emissivity_2})", p.radiation(area, emissivity_1, emissivity_2), lab["UA"]),
-    ("still-air convection, default h", p.convection(area), lab["UA"]),
-]
-display(pd.DataFrame(rows, columns=["quantity", "value", "units"]).round(1))
-m = MATERIALS[material]
-print(f"{material}: k = {m['k']} W/m·K, ρ = {m['rho']} kg/m³, c = {m['cp']} J/kg·K (SI library values)")
 '''))
 
     cells.append(md(r"""
@@ -587,7 +561,162 @@ def vent_variant(cells):
     return cells
 
 
+CALC_INTRO = r"""
+Material properties and layer values for the **Thermal Matrix Model**. Look up a material, then
+get the conductance UA and capacitance C of a layer, split into segments for thick, massive
+layers, with formulas you can paste straight into the network editor.
+
+**Your own materials table.** The built-in table holds generic typical values. To use
+**ASHRAE Handbook—Fundamentals, chapter 26, Table 1** (*Thermal Properties of Common Building and
+Insulating Materials*) or manufacturers' data, put the rows you need in a CSV or Google Sheet
+with these columns (SI, as in Table 1):
+
+| column | meaning |
+|---|---|
+| `material` | your name for it, e.g. *hollow clay block 25 cm* |
+| `density_kg_m3` | density ρ, kg/m³ |
+| `k_W_mK` | conductivity k, W/(m·K) |
+| `R_m2K_W` and `R_thickness_mm` | for products listed by **resistance at a given thickness** (boards, blocks), give R and that thickness instead of k; k is worked out as thickness / R |
+| `cp_kJ_kgK` | specific heat, kJ/(kg·K) |
+| `source` | where the numbers came from (e.g. *ASHRAE Fund. 2025 ch. 26 Table 1*) |
+
+Step 1 can save a template with these columns to your Google Drive; open it with Google Sheets,
+add rows, and load it back. Your rows are added to the generic ones; a row with the same name
+replaces the generic value. ASHRAE's handbook is copyrighted, so keep your table in your own
+Drive (or the course site) rather than posting it publicly. Penn users can read the handbook
+online through the library.
+"""
+
+CALC_CELLS = [
+    ("md", "## 1 ▸ Materials table"),
+    ("code", r'''
+#@title 1 ▸ Load the materials table { display-mode: "form" }
+#@markdown *Google Drive*: the file `csv_name` in *My Drive ▸ drive_folder*. *Link*: a Google Sheet shared as "anyone with the link", or a CSV URL.
+materials_from = "Generic values only" #@param ["Generic values only", "My CSV in Google Drive", "Upload a CSV", "Google Sheet or CSV link"]
+drive_folder = "ThermalMatrixModel" #@param {type:"string"}
+csv_name = "materials.csv" #@param {type:"string"}
+link = "" #@param {type:"string"}
+#@markdown Tick to save a template (generic rows + the right columns) as `csv_name` in your Drive folder.
+save_template = False #@param {type:"boolean"}
+
+if save_template:
+    path = os.path.join(drive_path(drive_folder), csv_name)
+    if os.path.exists(path):
+        print(f"{path} already exists - not overwritten (pick another csv_name)")
+    else:
+        generic_table()[TEMPLATE_COLUMNS].to_csv(path, index=False)
+        print("template saved to", path, "- open it with Google Sheets, add rows, then load it here")
+
+user = None
+if materials_from.startswith("My CSV"):
+    user = read_table(os.path.join(drive_path(drive_folder), csv_name))
+elif materials_from.startswith("Upload"):
+    if not IN_COLAB:
+        raise RuntimeError("Uploading needs Colab. Locally use: user = read_table('file.csv')")
+    up = _colab_files.upload()
+    user = read_table(next(iter(up.values())))
+elif materials_from.startswith("Google Sheet"):
+    user = read_table(link)
+mats = Materials(user)
+print(f"{len(mats.df)} materials" + (f" ({mats.n_user} rows read from your table, added to the generic values)" if mats.n_user else " (generic values)"))
+'''),
+    ("code", r'''
+#@title 2 ▸ Look up materials { display-mode: "form" }
+#@markdown Part of a name (blank = all), shown in SI or IP units.
+search = "" #@param {type:"string"}
+units = "SI" #@param ["SI", "IP"]
+display(mats.show(search, units).round(4))
+'''),
+    ("md", r"""
+## 2 ▸ One layer
+Geometry in the network's units: m and m² for SI, ft and ft² for IP. **area** = face area the
+heat passes through; **thickness** = layer thickness in the direction of heat flow.
+
+**How many segments?** A massive layer is modelled as several capacitive nodes (like the
+spreadsheet's *Wall 1–5*). A daily temperature swing dies away over the **penetration depth**
+δ = √(α·P/π) (α = k/ρc, P = 1 day); segments no thicker than δ/2 follow it well, so that is the
+suggestion when `n_segments` is 0. Light or insulating layers need only one.
+"""),
+    ("code", r'''
+#@title 3 ▸ Layer values { display-mode: "form" }
+material = "concrete" #@param {type:"string"}
+units = "SI" #@param ["SI", "IP"]
+area = 48 #@param {type:"number"}
+thickness = 0.4 #@param {type:"number"}
+n_segments = 0 #@param {type:"integer"}
+
+table, formulas, info = layer(mats, material, area, thickness, units, n_segments)
+u = UNITS[units]
+print(f"{info['material']}: k = {info['k']:.4g} {u['k']}, ρ = {info['rho']:.4g} {u['rho']}, "
+      f"c = {info['cp']:.4g} {u['cp']}" + ("  (k from R)" if info["k_from_R"] else "") +
+      (f"  [{info['source']}]" if info["source"] else ""))
+print(f"{info['n']} segment(s)" + ("" if info["n"] == info["suggested"] else f"  (suggested: {info['suggested']})"))
+display(table.round(3))
+display(Markdown("**Formulas to paste into the network editor** (" + units + " network):\n\n" +
+                 "\n".join(f"- {k}: `{v}`" for k, v in formulas.items())))
+'''),
+    ("md", r"""
+## 3 ▸ An assembly of layers
+List the layers from **inside to outside**, one per line as `material, thickness`. The table
+gives each layer's R and heat capacity, and the totals with surface films (defaults: inside
+0.12, outside 0.03 m²·K/W; set to change them). Use it for the steady-state U-value of a wall
+and to see where its mass sits.
+"""),
+    ("code", r'''
+#@title 4 ▸ Assembly { display-mode: "form" }
+units = "SI" #@param ["SI", "IP"]
+area = 1 #@param {type:"number"}
+R_inside = 0 #@param {type:"number"}
+R_outside = 0 #@param {type:"number"}
+#@markdown Edit the layers in the code (*Show code*, or double-click this cell):
+layers = """
+gypsum board, 0.0125
+mineral wool, 0.15
+brick, 0.10
+"""
+df, tot = assembly(mats, layers, area, units, R_inside or None, R_outside or None)
+u = UNITS[units]
+display(df.round(4))
+print(f"R total (with surface films {tot['R_surfaces']:.3g}) = {tot['R_total']:.3g} {u['R']}   "
+      f"U = {tot['U']:.3g} {u['U']}   UA = {tot['UA']:.4g} {u['UA']}   C = {tot['C']:.4g} {u['C']} for {area:g} {u['A']}")
+'''),
+]
+
+
+def build_calculator(note=""):
+    version = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    entries = changelog_entries(version, note, tag="[property calculator] ")
+    src = open(os.path.join(HERE, "property_calculator.py"), encoding="utf-8").read()
+    src, n = re.subn(r'^CALC_VERSION = .*$', f'CALC_VERSION = "{version}"', src, count=1, flags=re.M)
+    assert n == 1
+    cells = [md(f"# 🧱 Property Calculator\n**Version {version}**" + (f" - {note}" if note else "") + "\n" + CALC_INTRO)]
+    cells.append(code(
+        "#@title 0 ▸ Setup (run once) { display-mode: \"form\" }\n" + src
+        + "\nfrom IPython.display import display, Markdown\n"
+        + "try:\n    from google.colab import files as _colab_files\n    IN_COLAB = True\n"
+        + "except ImportError:\n    IN_COLAB = False\n" + DRIVE_HELPER
+        + "print(f'✓ property calculator loaded - version {CALC_VERSION}')\n"))
+    for kind, text in CALC_CELLS:
+        cells.append(md(text) if kind == "md" else code(text, form=not text.lstrip().startswith("#@title 4")))
+    cells.append(md("### Version history\n" + "\n".join(e for e in entries if "[property calculator]" in e)))
+    nb = {"nbformat": 4, "nbformat_minor": 0,
+          "metadata": {"colab": {"provenance": []},
+                       "kernelspec": {"name": "python3", "display_name": "Python 3"},
+                       "language_info": {"name": "python"}},
+          "cells": cells}
+    for c in nb["cells"]:
+        c["source"] = c["source"].splitlines(keepends=True)
+    out = os.path.join(HERE, "PropertyCalculator.ipynb")
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(nb, f, indent=1, ensure_ascii=False)
+    write_changelog(entries)
+    print("wrote", out, "- version", version)
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
-    vent = "--vent" in args
-    build(" ".join(a for a in args if a != "--vent").strip(), vent=vent)
+    note = " ".join(a for a in args if not a.startswith("--")).strip()
+    if "--calc" in args:
+        build_calculator(note)
+    else:
+        build(note, vent="--vent" in args)

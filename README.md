@@ -8,6 +8,7 @@ Python version of the spreadsheet `MatrixModel_TrombeWall_25.xlsx` (method from
 |---|---|
 | **Thermal Matrix Model** (standard) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/upenn/7520_MatrixModel/blob/main/ThermalMatrixModel.ipynb) |
 | **Thermal Matrix Model + controlled ventilation** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/upenn/7520_MatrixModel/blob/main/ThermalMatrixModel_Vent.ipynb) |
+| **Property Calculator** (materials, layer values, assemblies) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/upenn/7520_MatrixModel/blob/main/PropertyCalculator.ipynb) |
 
 The links always open the latest version on GitHub. Step 5 saves your network (`.json`), results
 (`.csv`) and diagram (`.png`) to *My Drive ▸ ThermalMatrixModel* in your Google Drive (or downloads
@@ -20,6 +21,7 @@ them); step 2a opens a saved network again. To keep edits to the notebook itself
 |---|---|
 | `ThermalMatrixModel.ipynb` | **The notebook to give students.** Self-contained: upload it to Colab (File ▸ Upload notebook) or put it on Drive / GitHub. |
 | `ThermalMatrixModel_Vent.ipynb` | **Variant with controlled ventilation**: a link can switch between a closed and an open UA (temperature-responsive windows). Same engine; opens on the operable-window example in July. |
+| `PropertyCalculator.ipynb` | **Stand-alone property calculator**: generic materials plus the student's own table (CSV or Google Sheet laid out like ASHRAE *Fundamentals* ch. 26 Table 1); layer UA and C split into segments, paste-ready formulas, assembly U-values. Built from `property_calculator.py` with `python build_notebook.py --calc "note"`. |
 | `thermal_matrix.py` | The engine (source of truth). Network, EPW reader, solar on surfaces, property helpers, implicit solver, thermostats, plots, drawing editor. |
 | `build_notebook.py` | Rebuilds the notebook from `thermal_matrix.py` (run after editing the engine): `python build_notebook.py "what changed"` (add `--vent` for the ventilation notebook). Stamps the build date/time as the model version. |
 | `CHANGELOG.md` | Version history, one line per build (also shown at the end of the notebook). |
