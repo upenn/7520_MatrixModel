@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Excel / Office lock files
+~$*
+
+# local outputs from running the notebook (results, saved networks, diagrams)
+*_results.csv
+*_network.png
+my_network.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
