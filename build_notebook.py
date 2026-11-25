@@ -580,9 +580,11 @@ with these columns (SI, as in Table 1):
 | `cp_kJ_kgK` | specific heat, kJ/(kg·K) |
 | `source` | where the numbers came from (e.g. *ASHRAE Fund. 2025 ch. 26 Table 1*) |
 
-Step 1 can save a template with these columns to your Google Drive; open it with Google Sheets,
-add rows, and load it back. Your rows are added to the generic ones; a row with the same name
-replaces the generic value. ASHRAE's handbook is copyrighted, so keep your table in your own
+**The easy way:** tick *save_template* in step 1 and run it. In Google Drive, open
+*ThermalMatrixModel ▸ materials.csv* with **Google Sheets**. That makes a Google Sheet called
+*materials*; add your rows there (Sheets saves as you type). Then choose **My Google Sheet** in step 1
+and run it again (Colab asks once for permission to read your Sheets). There's no need to save as CSV.
+Your rows are added to the generic ones; a row with the same name replaces the generic value. ASHRAE's handbook is copyrighted, so keep your table in your own
 Drive (or the course site) rather than posting it publicly. Penn users can read the handbook
 online through the library.
 """
@@ -591,12 +593,14 @@ CALC_CELLS = [
     ("md", "## 1 ▸ Materials table"),
     ("code", r'''
 #@title 1 ▸ Load the materials table { display-mode: "form" }
-#@markdown *Google Drive*: the file `csv_name` in *My Drive ▸ drive_folder*. *Link*: a Google Sheet shared as "anyone with the link", or a CSV URL.
-materials_from = "Generic values only" #@param ["Generic values only", "My CSV in Google Drive", "Upload a CSV", "Google Sheet or CSV link"]
+#@markdown **My Google Sheet**: a Google Sheet in your Drive called `sheet_name` (e.g. the one made by opening the template with Google Sheets).
+#@markdown **My CSV in Google Drive**: the file `csv_name` in *My Drive ▸ drive_folder*. **Link**: a Google Sheet shared as "anyone with the link", or a CSV URL.
+materials_from = "Generic values only" #@param ["Generic values only", "My Google Sheet", "My CSV in Google Drive", "Upload a CSV", "Google Sheet or CSV link"]
+sheet_name = "materials" #@param {type:"string"}
 drive_folder = "ThermalMatrixModel" #@param {type:"string"}
 csv_name = "materials.csv" #@param {type:"string"}
 link = "" #@param {type:"string"}
-#@markdown Tick to save a template (generic rows + the right columns) as `csv_name` in your Drive folder.
+#@markdown Tick to save a template (generic rows + the right columns) as `csv_name` in your Drive folder; open it with Google Sheets to edit.
 save_template = False #@param {type:"boolean"}
 
 if save_template:
@@ -605,10 +609,13 @@ if save_template:
         print(f"{path} already exists - not overwritten (pick another csv_name)")
     else:
         generic_table()[TEMPLATE_COLUMNS].to_csv(path, index=False)
-        print("template saved to", path, "- open it with Google Sheets, add rows, then load it here")
+        print("template saved to", path, "- in Google Drive open it with Google Sheets, add rows, "
+              "then load it here with 'My Google Sheet'")
 
 user = None
-if materials_from.startswith("My CSV"):
+if materials_from.startswith("My Google Sheet"):
+    user = read_google_sheet(sheet_name)
+elif materials_from.startswith("My CSV"):
     user = read_table(os.path.join(drive_path(drive_folder), csv_name))
 elif materials_from.startswith("Upload"):
     if not IN_COLAB:

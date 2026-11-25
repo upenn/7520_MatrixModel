@@ -107,6 +107,39 @@ def read_table(source):
     return _clean(pd.read_csv(source, encoding="utf-8-sig"))
 
 
+def read_google_sheet(name="materials"):
+    """Read a Google Sheet from the user's Drive by its name (Colab only; asks once for
+    permission). Opening materials.csv with Google Sheets makes a Sheet called 'materials'
+    or 'materials.csv'; both are tried."""
+    try:
+        from google.colab import auth  # type: ignore
+    except ImportError:
+        raise RuntimeError("Reading a Google Sheet by name needs Colab. Locally, download the "
+                           "Sheet as CSV and use read_table('file.csv').") from None
+    import gspread  # preinstalled in Colab
+    from google.auth import default
+    auth.authenticate_user()
+    creds, _ = default()
+    gc = gspread.authorize(creds)
+    name = str(name).strip()
+    stem = name[:-4] if name.lower().endswith(".csv") else name
+    for title in dict.fromkeys([name, stem, stem + ".csv"]):
+        try:
+            sh = gc.open(title)
+            break
+        except gspread.SpreadsheetNotFound:
+            continue
+    else:
+        similar = [f["name"] for f in gc.list_spreadsheet_files() if stem.lower() in f["name"].lower()]
+        raise FileNotFoundError(f"No Google Sheet called '{stem}' in your Drive." +
+                                (f" Sheets with similar names: {', '.join(similar)}" if similar else ""))
+    rows = sh.sheet1.get_all_values()
+    if not rows:
+        raise ValueError(f"The Google Sheet '{sh.title}' is empty.")
+    print(f"read Google Sheet '{sh.title}' ({len(rows) - 1} rows)")
+    return _clean(pd.DataFrame(rows[1:], columns=rows[0]))
+
+
 class Materials:
     """A materials table: generic values with the user's rows added (user rows win)."""
 
