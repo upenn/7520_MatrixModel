@@ -141,10 +141,11 @@ def read_google_sheet(name="materials"):
 
 
 class Materials:
-    """A materials table: generic values with the user's rows added (user rows win)."""
+    """A materials table: generic values with the user's rows added (user rows win),
+    or the user's rows alone (include_generic=False)."""
 
-    def __init__(self, user=None):
-        tables = [_clean(generic_table())]
+    def __init__(self, user=None, include_generic=True):
+        tables = [_clean(generic_table())] if include_generic or user is None else []
         if user is not None:
             tables.append(user if "k_from_R" in user else _clean(user))
         df = pd.concat(tables, ignore_index=True)
@@ -184,6 +185,68 @@ class Materials:
         out["note"] = np.where(df["k_from_R"], "k from R at " + df["R_thickness_mm"].astype(str) + " mm", "")
         out["source"] = df["source"]
         return out.reset_index(drop=True)
+
+
+# The material picked in the browser (step 2); step 3 uses it when its own box is blank.
+SELECTED = {"material": "concrete"}
+
+
+def browse(mats, units="SI", whole_table=True):
+    """Show the whole materials table and a list to pick a material from.
+    The pick is stored in SELECTED['material'] and its properties are shown."""
+    import ipywidgets as W
+    from IPython.display import display, clear_output
+    if whole_table:
+        table = mats.show("", units).round(4)
+        try:   # Colab: sortable, searchable table
+            from google.colab import data_table  # type: ignore
+            display(data_table.DataTable(table, include_index=False, num_rows_per_page=15))
+        except ImportError:
+            with pd.option_context("display.max_rows", None):
+                display(table)
+    u = UNITS[units]
+    filt = W.Text(placeholder="type part of a name to narrow the list", description="Filter:",
+                  layout=W.Layout(width="420px"))
+    pick = W.Select(rows=14, layout=W.Layout(width="420px"))
+    out = W.Output(layout=W.Layout(padding="0 0 0 16px"))
+
+    def refresh(*_):
+        df = mats.search(filt.value)
+        current = pick.value
+        pick.options = [(r.material, r.material) for r in df.itertuples()]
+        if current in list(df["material"]):
+            pick.value = current
+
+    def show(change=None):
+        name = pick.value
+        with out:
+            clear_output()
+            if not name:
+                print("No material selected.")
+                return
+            SELECTED["material"] = name
+            row = mats.find(name)
+            k, rho, cp = props_in(row.k_W_mK, row.density_kg_m3, row.cp_kJ_kgK, units)
+            print(f"selected: {name}\n")
+            print(f"  density   {rho:,.4g} {u['rho']}")
+            print(f"  k         {k:,.4g} {u['k']}" + (f"   (from R = {row.R_m2K_W:g} m²·K/W at "
+                                                     f"{row.R_thickness_mm:g} mm)" if row.k_from_R else ""))
+            print(f"  c         {cp:,.4g} {u['cp']}")
+            if not pd.isna(row.k_W_mK) and not pd.isna(row.density_kg_m3) and not pd.isna(row.cp_kJ_kgK):
+                d = penetration_depth(row.k_W_mK, row.density_kg_m3, row.cp_kJ_kgK)
+                print(f"  daily penetration depth δ  {d if units == 'SI' else d / M_PER_FT:.3g} {u['L']}")
+            if row.source:
+                print(f"  source    {row.source}")
+            print("\nRun step 3 to get layer values for it.")
+
+    filt.observe(refresh, names="value")
+    pick.observe(show, names="value")
+    refresh()
+    if SELECTED["material"] in pick.options or any(v == SELECTED["material"] for _, v in pick.options):
+        pick.value = SELECTED["material"]
+    show()
+    display(W.VBox([filt, W.HBox([pick, out])]))
+    return pick
 
 
 def props_in(k_si, rho_si, cp_kj, units):

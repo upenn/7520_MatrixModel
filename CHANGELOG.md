@@ -4,6 +4,7 @@ Newest first. Add a note with `python build_notebook.py "what changed"`.
 Entries marked [ventilation notebook] are builds of ThermalMatrixModel_Vent.ipynb (`python build_notebook.py --vent "what changed"`); both notebooks share the engine.
 Entries marked [property calculator] are builds of PropertyCalculator.ipynb (`python build_notebook.py --calc "what changed"`).
 
+- **2026-11-24 19:25** - [property calculator] Step 2 shows the whole materials table and a list to pick a material from (step 3 uses the pick); your Google Sheet 'materials' is the default table, with an option to leave out the generic values
 - **2026-11-24 19:15** - [property calculator] Read the materials table straight from a Google Sheet in your Drive by name (no need to save as CSV); template instructions updated
 - **2026-11-24 18:53** - [property calculator] First version: materials table (generic values plus your own CSV or Google Sheet in the layout of ASHRAE Fundamentals ch. 26 Table 1), layer values with suggested segments and paste-ready formulas, and assembly U-values
 - **2026-11-24 18:52** - [ventilation notebook] Property calculator moved to its own notebook (PropertyCalculator.ipynb); link to it in step 2

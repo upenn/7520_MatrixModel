@@ -584,7 +584,11 @@ with these columns (SI, as in Table 1):
 *ThermalMatrixModel ▸ materials.csv* with **Google Sheets**. That makes a Google Sheet called
 *materials*; add your rows there (Sheets saves as you type). Then choose **My Google Sheet** in step 1
 and run it again (Colab asks once for permission to read your Sheets). There's no need to save as CSV.
-Your rows are added to the generic ones; a row with the same name replaces the generic value. ASHRAE's handbook is copyrighted, so keep your table in your own
+That Sheet is the default source in step 1, so whatever is in it is used. To bring in a fuller
+table (e.g. a class table of Table 1 values), paste it into the Sheet, or in Sheets use
+*File ▸ Import ▸ Upload* with *Replace spreadsheet*, keeping the same columns. Your rows are
+added to the generic ones (a row with the same name replaces the generic value); untick
+*include_generic* to use your table alone. ASHRAE's handbook is copyrighted, so keep your table in your own
 Drive (or the course site) rather than posting it publicly. Penn users can read the handbook
 online through the library.
 """
@@ -595,11 +599,13 @@ CALC_CELLS = [
 #@title 1 ▸ Load the materials table { display-mode: "form" }
 #@markdown **My Google Sheet**: a Google Sheet in your Drive called `sheet_name` (e.g. the one made by opening the template with Google Sheets).
 #@markdown **My CSV in Google Drive**: the file `csv_name` in *My Drive ▸ drive_folder*. **Link**: a Google Sheet shared as "anyone with the link", or a CSV URL.
-materials_from = "Generic values only" #@param ["Generic values only", "My Google Sheet", "My CSV in Google Drive", "Upload a CSV", "Google Sheet or CSV link"]
+materials_from = "My Google Sheet" #@param ["My Google Sheet", "Generic values only", "My CSV in Google Drive", "Upload a CSV", "Google Sheet or CSV link"]
 sheet_name = "materials" #@param {type:"string"}
 drive_folder = "ThermalMatrixModel" #@param {type:"string"}
 csv_name = "materials.csv" #@param {type:"string"}
 link = "" #@param {type:"string"}
+#@markdown Untick to use only your table (once it is complete); ticked, the generic values fill in anything your table lacks.
+include_generic = True #@param {type:"boolean"}
 #@markdown Tick to save a template (generic rows + the right columns) as `csv_name` in your Drive folder; open it with Google Sheets to edit.
 save_template = False #@param {type:"boolean"}
 
@@ -614,7 +620,11 @@ if save_template:
 
 user = None
 if materials_from.startswith("My Google Sheet"):
-    user = read_google_sheet(sheet_name)
+    try:
+        user = read_google_sheet(sheet_name)
+    except (FileNotFoundError, RuntimeError) as e:
+        print(e)
+        print("-> using the generic values (tick save_template to start your own table)")
 elif materials_from.startswith("My CSV"):
     user = read_table(os.path.join(drive_path(drive_folder), csv_name))
 elif materials_from.startswith("Upload"):
@@ -624,15 +634,16 @@ elif materials_from.startswith("Upload"):
     user = read_table(next(iter(up.values())))
 elif materials_from.startswith("Google Sheet"):
     user = read_table(link)
-mats = Materials(user)
+mats = Materials(user, include_generic)
 print(f"{len(mats.df)} materials" + (f" ({mats.n_user} rows read from your table, added to the generic values)" if mats.n_user else " (generic values)"))
 '''),
     ("code", r'''
-#@title 2 ▸ Look up materials { display-mode: "form" }
-#@markdown Part of a name (blank = all), shown in SI or IP units.
-search = "" #@param {type:"string"}
+#@title 2 ▸ Browse and select a material { display-mode: "form" }
+#@markdown The whole table (click a column heading to sort, or use its search box), then a list to **pick a material** from:
+#@markdown click one to see its properties; step 3 uses it. Type in *Filter* to narrow the list.
 units = "SI" #@param ["SI", "IP"]
-display(mats.show(search, units).round(4))
+show_whole_table = True #@param {type:"boolean"}
+browse(mats, units, whole_table=show_whole_table);
 '''),
     ("md", r"""
 ## 2 ▸ One layer
@@ -646,13 +657,14 @@ suggestion when `n_segments` is 0. Light or insulating layers need only one.
 """),
     ("code", r'''
 #@title 3 ▸ Layer values { display-mode: "form" }
-material = "concrete" #@param {type:"string"}
+#@markdown `material`: blank = the one selected in step 2 (or type a name).
+material = "" #@param {type:"string"}
 units = "SI" #@param ["SI", "IP"]
 area = 48 #@param {type:"number"}
 thickness = 0.4 #@param {type:"number"}
 n_segments = 0 #@param {type:"integer"}
 
-table, formulas, info = layer(mats, material, area, thickness, units, n_segments)
+table, formulas, info = layer(mats, material.strip() or SELECTED["material"], area, thickness, units, n_segments)
 u = UNITS[units]
 print(f"{info['material']}: k = {info['k']:.4g} {u['k']}, ρ = {info['rho']:.4g} {u['rho']}, "
       f"c = {info['cp']:.4g} {u['cp']}" + ("  (k from R)" if info["k_from_R"] else "") +
